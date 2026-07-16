@@ -1,0 +1,50 @@
+<!-- Frontend -->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Toy Chatbot</title>
+
+</head>
+
+<body>
+
+<h1>Toy Assistant</h1>
+
+<input
+type="text"
+id="question"
+placeholder="Ask anything..."
+>
+
+<button onclick="sendQuestion()">
+Send
+</button>
+
+<div id="answer"></div>
+
+<script>
+
+async function sendQuestion(){
+
+let q =
+document.getElementById("question").value;
+
+let response =
+await fetch(`/chat?question=${q}`);
+
+let data =
+await response.json();
+
+document.getElementById("answer").innerHTML =
+data.answer;
+
+}
+
+</script>
+
+</body>
+
+</html>
