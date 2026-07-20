@@ -103,14 +103,15 @@ Answer:
 # ----------------------------
 
 if __name__ == "__main__":
-    print("\nThe chatbot is now active. Type 'exit' to quit.")
+    print("\nThe chatbot is now active. Type 'exit' to quit.\n")
     #print()
 
     while True:
-        query = input("\nYou: ")
+        query = input("You: ")
         if query.lower() == "exit":
             print("Goodbye!")
             break
 
         answer = answer_question(query)
-        print("Bot:", answer)
+        #print("Bot:", answer)
+        print()
