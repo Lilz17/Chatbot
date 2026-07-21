@@ -34,7 +34,7 @@ MODEL_NAME = "llama3.1"
 # Question Answer Function
 # ----------------------------
 
-def answer_question(question):
+def answer_question(question: str):
     # docs = db.similarity_search(question, k=3)
 
     # replacing semantic match with maximal marginal relevance for information retrieval
@@ -64,39 +64,28 @@ Answer:
             stream=True
         )
         if response.status_code != 200:
-            return "Error: Unable to connect to the model."
+            yield "Error: Unable to connect to the model."
+            return
     except requests.exceptions.RequestException as e:
-        return f"Error: Could not reach the Ollama server. ({e})"
+        yield f"Error: Could not reach the Ollama server. ({e})"
+        return
 
-    # process stream line-by-line
-    print("Bot: ", end="", flush=True)
-    full_response = ""
-
+    # process stream line-by-line and yield chunks
     try:
+        has_content = False
         for line in response.iter_lines():
             if line:
                 chunk = json.loads(line)
                 if "response" in chunk:
-                    piece = chunk["response"]
-                    print(piece, end="", flush=True)
-                    full_response += piece
-        print()
+                    has_content = True
+                    yield chunk["response"]
 
         # empty message
-        if not full_response:
-            return "Sorry, the model failed to generate a response."
-            
-        return full_response
-    
+        if not has_content:
+            yield "Sorry, the model failed to generate a response."
+                
     except Exception as e:
-        return f"Error while processing stream: {e}"
-
-    # result = response.json()
-
-    # if "response" in result:
-    #     return result["response"]
-
-    # return "Unable to generate response."
+        yield f"Error while processing stream: {e}"
 
 # ----------------------------
 # Testing
@@ -104,7 +93,6 @@ Answer:
 
 if __name__ == "__main__":
     print("\nThe chatbot is now active. Type 'exit' to quit.\n")
-    #print()
 
     while True:
         query = input("You: ")
@@ -112,6 +100,9 @@ if __name__ == "__main__":
             print("Goodbye!")
             break
 
-        answer = answer_question(query)
-        #print("Bot:", answer)
-        print()
+        print("Bot: ", end="", flush=True)
+
+        for piece in answer_question(query):
+            print(piece, end="", flush=True)
+
+        print("\n")

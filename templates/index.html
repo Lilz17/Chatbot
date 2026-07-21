@@ -1,50 +1,127 @@
-<!-- Frontend -->
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-
-<title>Toy Chatbot</title>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Research Assistant</title>
+    <!-- Tailwind CSS CDN for instant, modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
 
-<h1>Toy Assistant</h1>
+    <div class="w-full max-w-2xl bg-slate-800 rounded-xl shadow-2xl p-6 flex flex-col h-[600px]">
+        <!-- Header -->
+        <h1 class="text-2xl font-bold mb-4 border-b border-slate-700 pb-3 text-emerald-400">
+            Revision Helper
+        </h1>
 
-<input
-type="text"
-id="question"
-placeholder="Ask anything..."
->
+        <!-- Chat History Window -->
+        <div id="chat-container" class="flex-1 overflow-y-auto space-y-4 pr-2 mb-4 scroll-smooth">
+            <div class="bg-slate-700/50 p-3 rounded-lg text-slate-300 text-sm">
+                👋 Hello User! Ask a question about your documents to get started.
+            </div>
+        </div>
 
-<button onclick="sendQuestion()">
-Send
-</button>
+        <!-- Input Form Area -->
+        <div class="flex gap-2 mt-auto">
+            <input 
+                type="text" 
+                id="question" 
+                placeholder="Ask anything about your notes..." 
+                class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 focus:outline-none focus:border-emerald-500 transition-colors"
+                onkeypress="handleKeyPress(event)"
+            >
+            <button 
+                onclick="sendQuestion()" 
+                id="send-btn"
+                class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-3 rounded-lg transition-colors cursor-pointer"
+            >
+                Send
+            </button>
+        </div>
+    </div>
 
-<div id="answer"></div>
+    <script>
+        async function sendQuestion() {
+            const inputField = document.getElementById("question");
+            const chatContainer = document.getElementById("chat-container");
+            const sendBtn = document.getElementById("send-btn");
+            
+            const q = inputField.value.trim();
+            if (!q) return;
 
-<script>
+            // Append User Message
+            chatContainer.innerHTML += `
+                <div class="flex justify-end">
+                    <div class="bg-emerald-600 text-white px-4 py-2 rounded-lg max-w-[80%] text-sm">
+                        ${escapeHtml(q)}
+                    </div>
+                </div>
+            `;
 
-async function sendQuestion(){
+            inputField.value = "";
+            inputField.disabled = true;
+            sendBtn.disabled = true;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
 
-let q =
-document.getElementById("question").value;
+            // Create placeholder for Bot response
+            const botMessageId = 'bot-msg-' + Date.now();
+            chatContainer.innerHTML += `
+                <div class="flex justify-start">
+                    <div id="${botMessageId}" class="bg-slate-700 text-slate-200 px-4 py-2 rounded-lg max-w-[80%] text-sm" style="white-space: pre-line;">
+                        <span class="text-emerald-400 font-semibold">Bot: </span><span class="content">Thinking...</span>
+                    </div>
+                </div>
+            `;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
 
-let response =
-await fetch(`/chat?question=${q}`);
+            const contentSpan = document.querySelector(`#${botMessageId} .content`);
+            contentSpan.textContent = ""; // Clear "Thinking..."
 
-let data =
-await response.json();
+            try {
+                // Fetch from FastAPI Streaming Endpoint
+                const response = await fetch(`/chat?question=${encodeURIComponent(q)}`);
+                
+                if (!response.ok) {
+                    contentSpan.textContent = "Error: Unable to reach server.";
+                    return;
+                }
 
-document.getElementById("answer").innerHTML =
-data.answer;
+                // Read the Stream Chunk-by-Chunk
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
 
-}
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
-</script>
+                    const chunk = decoder.decode(value, { stream: true });
+                    contentSpan.textContent += chunk;
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
 
+            } catch (error) {
+                contentSpan.textContent = "Error: Connection lost.";
+            } finally {
+                inputField.disabled = false;
+                sendBtn.disabled = false;
+                inputField.focus();
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendQuestion();
+            }
+        }
+
+        // Basic helper to prevent HTML injection attacks
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
 </body>
 
 </html>
